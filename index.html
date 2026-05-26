@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="bs" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thriftly — Second Hand Marketplace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== TOPBAR ===== -->
+<nav class="topbar">
+  <div class="topbar-inner">
+    <a class="logo" onclick="showPage('home')" style="cursor:pointer">Thrift<span>ly</span></a>
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Pretraži hiljadu proizvoda..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')handleSearch(this.value)">
+      <button class="search-bar-btn" onclick="handleSearch(document.getElementById('search-input').value)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
+    </div>
+    <div class="nav-actions">
+      <button class="nav-icon-btn" title="Dark mode" onclick="toggleDark()">
+        <svg id="dark-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="nav-icon-btn" title="Poruke" onclick="requireAuth(()=>showPage('chat'))">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="badge" id="msg-badge" style="display:none">2</span>
+      </button>
+      <button class="nav-icon-btn" title="Korpa" onclick="requireAuth(()=>showPage('cart'))">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span class="badge" id="cart-badge">3</span>
+      </button>
+      <div id="auth-logged-out" style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="showModal('modal-login')">Prijava</button>
+        <button class="btn btn-primary btn-sm" onclick="showModal('modal-register')">Registracija</button>
+      </div>
+      <div id="auth-logged-in" style="display:none">
+        <button class="nav-icon-btn" onclick="showPage('profile')" title="Profil" style="gap:8px;width:auto;padding:0 12px">
+          <div style="width:28px;height:28px;border-radius:99px;background:var(--green-light);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">AK</div>
+          <span style="font-size:13px;font-weight:500">Amir</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== CATEGORY BAR ===== -->
+<div class="catbar">
+  <div class="catbar-inner">
+    <button class="cat-btn active" onclick="filterCat(this,'sve')">✦ Sve</button>
+    <div class="cat-divider"></div>
+    <button class="cat-btn" onclick="filterCat(this,'odjeca')">👕 Odjeća</button>
+    <button class="cat-btn" onclick="filterCat(this,'obuca')">👟 Obuća</button>
+    <button class="cat-btn" onclick="filterCat(this,'elektronika')">📱 Elektronika</button>
+    <button class="cat-btn" onclick="filterCat(this,'knjige')">📚 Knjige</button>
+    <button class="cat-btn" onclick="filterCat(this,'namjestaj')">🛋️ Namještaj</button>
+    <button class="cat-btn" onclick="filterCat(this,'sport')">🏋️ Sport</button>
+    <button class="cat-btn" onclick="filterCat(this,'kuhinja')">🍳 Kuhinja</button>
+    <button class="cat-btn" onclick="filterCat(this,'igracke')">🎮 Igračke</button>
+    <button class="cat-btn" onclick="filterCat(this,'ostalo')">📦 Ostalo</button>
+  </div>
+</div>
+
+<!-- ===== PAGES CONTAINER ===== -->
+<div class="page-wrap">
+
+  <!-- === HOME PAGE === -->
+  <div class="page active" id="page-home">
+    <div class="main-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="filter-title">
+          Filteri
+          <button class="btn btn-ghost btn-sm" onclick="resetFilters()" style="font-size:12px;padding:4px 8px">Resetuj</button>
+        </div>
+        <div class="filter-section">
+          <span class="filter-label">Cijena (KM)</span>
+          <div class="price-inputs">
+            <input class="price-input" type="number" placeholder="0" id="price-min">
+            <span class="filter-sep">—</span>
+            <input class="price-input" type="number" placeholder="500" id="price-max">
+          </div>
+        </div>
+        <div class="filter-section">
+          <span class="filter-label">Stanje</span>
+          <div class="filter-options">
+            <label class="filter-option"><input type="checkbox" checked> Novo s etiketom</label>
+            <label class="filter-option"><input type="checkbox" checked> Kao novo</label>
+            <label class="filter-option"><input type="checkbox" checked> Dobro</label>
+            <label class="filter-option"><input type="checkbox" checked> Prihvatljivo</label>
+          </div>
+        </div>
+        <div class="filter-section">
+          <span class="filter-label">Lokacija</span>
+          <div class="filter-options">
+            <label class="filter-option"><input type="checkbox"> Sarajevo</label>
+            <label class="filter-option"><input type="checkbox"> Mostar</label>
+            <label class="filter-option"><input type="checkbox"> Banja Luka</label>
+            <label class="filter-option"><input type="checkbox"> Tuzla</label>
+            <label class="filter-option"><input type="checkbox"> Zenica</label>
+          </div>
+        </div>
+        <div class="filter-section">
+          <span class="filter-label">Ocjena prodavača</span>
+          <div class="filter-options">
+            <label class="filter-option"><input type="checkbox"> ⭐⭐⭐⭐⭐ (5)</label>
+            <label class="filter-option"><input type="checkbox"> ⭐⭐⭐⭐+ (4+)</label>
+            <label class="filter-option"><input type="checkbox"> ⭐⭐⭐+ (3+)</label>
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="showToast('✓','Filteri primijenjeni')">Primijeni filtere</button>
+      </aside>
+
+      <!-- Grid -->
+      <main>
+        <div class="grid-header">
+          <div>
+            <span class="section-title">Novo na Thriftly</span>
+            <span class="count" id="product-count">• 1,247 oglasa</span>
+          </div>
+          <select class="sort-select" onchange="sortProducts(this.value)">
+            <option value="novo">Najnovije</option>
+            <option value="cjeftino">Cijena ↑</option>
+            <option value="skupo">Cijena ↓</option>
+            <option value="ocjena">Najbolje ocijenjeni</option>
+          </select>
+        </div>
+        <div class="product-grid" id="product-grid"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- === PRODUCT DETAIL === -->
+  <div class="page" id="page-product">
+    <div class="pdetail-layout">
+      <div>
+        <div class="gallery-main">
+          <div class="pcard-img-placeholder" id="detail-img" style="aspect-ratio:4/3;font-size:80px">👗</div>
+        </div>
+        <div class="gallery-thumbs" id="detail-thumbs"></div>
+        <div style="margin-top:28px">
+          <div class="detail-section-title">Opis</div>
+          <p id="detail-desc" style="font-size:14px;color:var(--text-2);line-height:1.7">Opis proizvoda će biti prikazan ovdje.</p>
+        </div>
+        <div class="divider"></div>
+        <div style="margin-top:0">
+          <div class="detail-section-title" style="margin-bottom:14px">Recenzije</div>
+          <div id="detail-reviews"></div>
+        </div>
+      </div>
+      <div class="pdetail-right">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+          <h1 class="pdetail-title" id="detail-title">Naziv proizvoda</h1>
+          <button class="pcard-fav" style="position:static;width:36px;height:36px;flex-shrink:0" id="detail-fav-btn" onclick="toggleDetailFav()">♡</button>
+        </div>
+        <div class="pdetail-price" id="detail-price">0 KM</div>
+        <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap" id="detail-tags"></div>
+        <div class="seller-card" onclick="showPage('profile')" style="cursor:pointer">
+          <div class="seller-avatar" id="detail-seller-avatar">AK</div>
+          <div>
+            <div class="seller-name" id="detail-seller-name">Prodavač</div>
+            <div class="seller-stats" id="detail-seller-stats">⭐ 4.8 · 24 prodaje · Sarajevo</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="event.stopPropagation();requireAuth(()=>showPage('chat'))">Poruka</button>
+        </div>
+        <div class="detail-section">
+          <div class="detail-section-title">Detalji</div>
+          <div class="detail-list" id="detail-list"></div>
+        </div>
+        <div class="pdetail-actions">
+          <button class="btn btn-primary btn-lg" style="flex:1" onclick="requireAuth(addToCart)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            Dodaj u korpu
+          </button>
+          <button class="btn btn-secondary" onclick="requireAuth(()=>showPage('chat'))">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Kontaktiraj
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === CART === -->
+  <div class="page" id="page-cart">
+    <div class="cart-layout">
+      <div>
+        <h1 class="cart-title">Vaša korpa</h1>
+        <div id="cart-items"></div>
+      </div>
+      <div class="order-summary">
+        <div class="summary-title">Pregled narudžbe</div>
+        <div id="summary-rows"></div>
+        <div class="summary-row total">
+          <span>Ukupno</span>
+          <span class="v" id="cart-total">0 KM</span>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="requireAuth(()=>showToast('🎉','Narudžba je postavljena!'))">
+          Nastavi na plaćanje →
+        </button>
+        <button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:13px" onclick="showPage('home')">
+          ← Nastavi kupovinu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- === CHAT === -->
+  <div class="page" id="page-chat">
+    <div style="max-width:1100px;margin:0 auto;padding:28px 24px 0">
+      <h1 style="font-family:var(--font-display);font-size:22px;font-weight:500;margin-bottom:16px">Poruke</h1>
+    </div>
+    <div style="max-width:1100px;margin:0 auto;padding:0 24px 28px">
+      <div class="chat-layout">
+        <div class="chat-sidebar">
+          <div class="chat-sidebar-header">
+            <div class="chat-sidebar-title">Razgovori</div>
+            <input class="chat-search" type="text" placeholder="Pretraži...">
+          </div>
+          <div class="chat-list" id="chat-list"></div>
+        </div>
+        <div class="chat-main">
+          <div class="chat-header">
+            <div style="width:36px;height:36px;border-radius:99px;background:var(--denim-light);color:var(--denim);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">MM</div>
+            <div>
+              <div class="chat-header-name">Mirko Marković</div>
+              <div class="chat-header-sub">● Online</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm">Profil</button>
+            </div>
+          </div>
+          <div class="chat-product-ctx" style="padding:10px 12px;margin:12px 18px 0">
+            <div class="chat-product-ctx-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;background:var(--bg-subtle)">👟</div>
+            <div>
+              <div class="chat-product-ctx-name">Nike Air Force 1 — veličina 42</div>
+              <div class="chat-product-ctx-price">65 KM</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="showPage('product')">Pogledaj</button>
+          </div>
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input-area">
+            <textarea class="chat-textarea" id="chat-input" placeholder="Napišite poruku..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
+            <button class="btn btn-primary" style="padding:10px 16px;border-radius:var(--radius-md)" onclick="sendMessage()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === PROFILE === -->
+  <div class="page" id="page-profile">
+    <div class="profile-layout">
+      <div class="profile-header-card">
+        <div class="profile-avatar">AK</div>
+        <div style="flex:1">
+          <div class="profile-name">Amir Kovačević</div>
+          <div style="font-size:13px;color:var(--text-3);margin-top:4px">Član od januara 2023. · Sarajevo</div>
+          <div class="stars" style="margin-top:6px;font-size:14px">★★★★★ <span style="color:var(--text-2);font-size:13px">4.9 (31 recenzija)</span></div>
+          <div class="profile-meta">
+            <div class="profile-stat"><div class="n">47</div><div class="l">Oglasa</div></div>
+            <div class="profile-stat"><div class="n">89</div><div class="l">Prodano</div></div>
+            <div class="profile-stat"><div class="n">12</div><div class="l">Kupljeno</div></div>
+            <div class="profile-stat"><div class="n">4.9</div><div class="l">Ocjena</div></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button class="btn btn-secondary btn-sm" onclick="requireAuth(()=>showPage('chat'))">Poruka</button>
+          <button class="btn btn-primary btn-sm" onclick="requireAuth(()=>showModal('modal-add-product'))">+ Dodaj oglas</button>
+        </div>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'tab-listings')">Moji oglasi</button>
+        <button class="tab" onclick="switchTab(this,'tab-bought')">Kupljeno</button>
+        <button class="tab" onclick="switchTab(this,'tab-reviews')">Recenzije</button>
+        <button class="tab" onclick="switchTab(this,'tab-settings')">Postavke</button>
+      </div>
+      <div id="tab-listings" class="tab-content">
+        <div class="product-grid" id="profile-grid"></div>
+      </div>
+      <div id="tab-bought" class="tab-content hidden">
+        <div class="empty-state"><div class="icon">📦</div>Još niste ništa kupili.</div>
+      </div>
+      <div id="tab-reviews" class="tab-content hidden">
+        <div id="profile-reviews"></div>
+      </div>
+      <div id="tab-settings" class="tab-content hidden">
+        <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:var(--radius-lg);padding:24px;max-width:520px">
+          <div style="font-family:var(--font-display);font-size:18px;margin-bottom:20px">Postavke profila</div>
+          <div class="form-group"><label class="form-label">Ime i prezime</label><input class="form-input" value="Amir Kovačević"></div>
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" value="amir@example.com" type="email"></div>
+          <div class="form-group"><label class="form-label">Lokacija</label><input class="form-input" value="Sarajevo"></div>
+          <div class="form-group"><label class="form-label">Bio</label><textarea class="form-textarea" style="min-height:70px">Volim vintage i thrift shopping. Sve je iz doma, bez pušača.</textarea></div>
+          <button class="btn btn-primary" onclick="showToast('✓','Profil ažuriran')">Sačuvaj promjene</button>
+          <button class="btn btn-ghost" style="margin-left:10px;color:var(--red)" onclick="logout()">Odjava</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- === ADMIN === -->
+  <div class="page" id="page-admin">
+    <div class="admin-layout">
+      <nav class="admin-nav">
+        <div class="admin-nav-title">Admin Panel</div>
+        <button class="admin-nav-item active" onclick="switchAdminTab(this,'atab-overview')"><span>📊</span> Pregled</button>
+        <button class="admin-nav-item" onclick="switchAdminTab(this,'atab-products')"><span>📦</span> Proizvodi</button>
+        <button class="admin-nav-item" onclick="switchAdminTab(this,'atab-users')"><span>👥</span> Korisnici</button>
+        <button class="admin-nav-item" onclick="switchAdminTab(this,'atab-reports')"><span>🚩</span> Prijave</button>
+        <div style="margin-top:auto;padding-top:20px">
+          <button class="admin-nav-item" onclick="showPage('home')" style="margin-top:10px"><span>←</span> Nazad na sajt</button>
+        </div>
+      </nav>
+      <div>
+        <!-- Overview Tab -->
+        <div id="atab-overview">
+          <div style="font-family:var(--font-display);font-size:22px;margin-bottom:20px;color:var(--text)">Pregled platforme</div>
+          <div class="admin-stat-grid">
+            <div class="admin-stat">
+              <div class="admin-stat-label">Ukupno korisnika</div>
+              <div class="admin-stat-value">2,841</div>
+              <div class="admin-stat-trend up">+12% ovaj mjesec</div>
+            </div>
+            <div class="admin-stat">
+              <div class="admin-stat-label">Aktivnih oglasa</div>
+              <div class="admin-stat-value">1,247</div>
+              <div class="admin-stat-trend up">+8% ovaj mjesec</div>
+            </div>
+            <div class="admin-stat">
+              <div class="admin-stat-label">Prodaja danas</div>
+              <div class="admin-stat-value">34</div>
+              <div class="admin-stat-trend down">-3 vs jučer</div>
+            </div>
+            <div class="admin-stat">
+              <div class="admin-stat-label">Otvorene prijave</div>
+              <div class="admin-stat-value">7</div>
+              <div class="admin-stat-trend down" style="color:var(--orange)">Zahtijeva pažnju</div>
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <div class="admin-table-header">
+              <span class="admin-table-title">Nedavna aktivnost</span>
+            </div>
+            <table>
+              <thead><tr><th>Događaj</th><th>Korisnik</th><th>Oglas</th><th>Datum</th></tr></thead>
+              <tbody>
+                <tr><td><span class="tag tag-green">Nova prodaja</span></td><td>Amir K.</td><td>Nike Air Force 1</td><td>Danas, 14:32</td></tr>
+                <tr><td><span class="tag tag-orange">Prijava</span></td><td>Mirko M.</td><td>iPhone 12</td><td>Danas, 11:20</td></tr>
+                <tr><td><span class="tag tag-denim">Novi oglas</span></td><td>Selma H.</td><td>Vintage jakna</td><td>Juče, 18:05</td></tr>
+                <tr><td><span class="tag tag-red">Ban zahtjev</span></td><td>User_4821</td><td>—</td><td>Juče, 09:14</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Products Tab -->
+        <div id="atab-products" class="hidden">
+          <div style="font-family:var(--font-display);font-size:22px;margin-bottom:20px;color:var(--text)">Upravljanje oglasima</div>
+          <div class="admin-table-wrap">
+            <div class="admin-table-header">
+              <span class="admin-table-title">Svi oglasi</span>
+              <input class="price-input" type="text" placeholder="Pretraži oglase..." style="width:200px">
+            </div>
+            <table>
+              <thead><tr><th>Naziv</th><th>Prodavač</th><th>Cijena</th><th>Stanje</th><th>Datum</th><th>Akcije</th></tr></thead>
+              <tbody id="admin-products-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="atab-users" class="hidden">
+          <div style="font-family:var(--font-display);font-size:22px;margin-bottom:20px;color:var(--text)">Korisnici</div>
+          <div class="admin-table-wrap">
+            <table>
+              <thead><tr><th>Korisnik</th><th>Email</th><th>Registriran</th><th>Prodaje</th><th>Status</th><th>Akcije</th></tr></thead>
+              <tbody id="admin-users-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div id="atab-reports" class="hidden">
+          <div style="font-family:var(--font-display);font-size:22px;margin-bottom:20px;color:var(--text)">Prijave sadržaja</div>
+          <div class="admin-table-wrap">
+            <table>
+              <thead><tr><th>Prijavio</th><th>Oglas/Korisnik</th><th>Razlog</th><th>Status</th><th>Akcije</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>mirko.m</td><td>iPhone 12 — Hamid K.</td>
+                  <td><span class="tag tag-orange">Lažan oglas</span></td>
+                  <td><span class="tag tag-denim">Na čekanju</span></td>
+                  <td style="display:flex;gap:6px">
+                    <button class="table-action ta-danger" onclick="showToast('🗑️','Oglas uklonjen')">Ukloni oglas</button>
+                    <button class="table-action ta-warn" onclick="showToast('⚠️','Korisnik banoviran')">Ban</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>selma.h</td><td>User_4821</td>
+                  <td><span class="tag tag-red">Neprikladan sadržaj</span></td>
+                  <td><span class="tag tag-denim">Na čekanju</span></td>
+                  <td style="display:flex;gap:6px">
+                    <button class="table-action ta-warn" onclick="showToast('⚠️','Korisnik banoviran')">Ban korisnika</button>
+                    <button class="table-action" style="color:var(--green);border-color:var(--green-light)" onclick="showToast('✓','Prijava zatvorena')">Zatvori</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end page-wrap -->
+
+<!-- ===== MODALS ===== -->
+
+<!-- Login Modal -->
+<div class="overlay hidden" id="modal-login" onclick="if(event.target===this)closeModal('modal-login')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-login')">✕</button>
+    <div class="modal-title">Dobrodošli nazad</div>
+    <div class="modal-sub">Prijavite se na vaš Thriftly račun</div>
+    <div class="form-group">
+      <label class="form-label">Email adresa</label>
+      <input class="form-input" type="email" placeholder="vasa@email.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Lozinka</label>
+      <input class="form-input" type="password" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="login()">Prijava</button>
+    <div class="form-divider"><span>ili</span></div>
+    <button class="btn btn-secondary" style="width:100%">Nastavi s Google računom</button>
+    <div class="auth-switch">
+      Nemate račun? <a onclick="closeModal('modal-login');showModal('modal-register')">Registrujte se</a>
+    </div>
+  </div>
+</div>
+
+<!-- Register Modal -->
+<div class="overlay hidden" id="modal-register" onclick="if(event.target===this)closeModal('modal-register')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-register')">✕</button>
+    <div class="modal-title">Kreiranje računa</div>
+    <div class="modal-sub">Pridružite se Thriftly zajednici</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Ime</label><input class="form-input" placeholder="Amir"></div>
+      <div class="form-group"><label class="form-label">Prezime</label><input class="form-input" placeholder="Kovačević"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Email adresa</label><input class="form-input" type="email" placeholder="vasa@email.com"></div>
+    <div class="form-group"><label class="form-label">Korisničko ime</label><input class="form-input" placeholder="amirk92"></div>
+    <div class="form-group"><label class="form-label">Lozinka</label><input class="form-input" type="password" placeholder="Min. 8 karaktera"></div>
+    <div class="form-group"><label class="form-label">Lokacija</label>
+      <select class="form-select"><option>Sarajevo</option><option>Mostar</option><option>Banja Luka</option><option>Tuzla</option><option>Zenica</option><option>Ostalo</option></select>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="register()">Kreiraj račun</button>
+    <div class="auth-switch">
+      Već imate račun? <a onclick="closeModal('modal-register');showModal('modal-login')">Prijavite se</a>
+    </div>
+  </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="overlay hidden" id="modal-add-product" onclick="if(event.target===this)closeModal('modal-add-product')">
+  <div class="modal" style="max-width:560px">
+    <button class="modal-close" onclick="closeModal('modal-add-product')">✕</button>
+    <div class="modal-title">Dodaj novi oglas</div>
+    <div class="modal-sub">Popunite detalje o vašem proizvodu</div>
+    <div class="form-group"><label class="form-label">Naziv proizvoda</label><input class="form-input" placeholder="npr. Nike Air Force 1, vel. 42"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Cijena (KM)</label><input class="form-input" type="number" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Kategorija</label>
+        <select class="form-select"><option>Odjeća</option><option>Obuća</option><option>Elektronika</option><option>Knjige</option><option>Namještaj</option><option>Sport</option><option>Ostalo</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Stanje</label>
+        <select class="form-select"><option>Novo s etiketom</option><option>Kao novo</option><option>Dobro</option><option>Prihvatljivo</option></select>
+      </div>
+      <div class="form-group"><label class="form-label">Lokacija</label><input class="form-input" placeholder="Sarajevo"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Opis</label><textarea class="form-textarea" placeholder="Opišite vaš proizvod što detaljnije..."></textarea></div>
+    <div class="form-group">
+      <label class="form-label">Slike</label>
+      <div class="upload-zone">
+        <div style="font-size:26px;margin-bottom:6px">📷</div>
+        <div>Prevucite slike ovdje ili kliknite za upload</div>
+        <div style="font-size:12px;margin-top:4px;color:var(--text-3)">PNG, JPG do 10MB · max 8 slika</div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-lg" style="width:100%;margin-top:4px" onclick="addProduct()">Objavi oglas</button>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
